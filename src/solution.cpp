@@ -1,6 +1,7 @@
 #include "subsetsumsolver/solution.hpp"
 
 #include "optimizationtools/utils/utils.hpp"
+#include <iomanip>
 
 using namespace subsetsumsolver;
 
