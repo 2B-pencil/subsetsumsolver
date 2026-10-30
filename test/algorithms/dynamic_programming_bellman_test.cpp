@@ -3,7 +3,10 @@
 #include "subsetsumsolver/algorithms/dynamic_programming_bellman.hpp"
 #include "subsetsumsolver/instance_builder.hpp"
 
+#include <boost/filesystem.hpp>
+
 using namespace subsetsumsolver;
+namespace fs = boost::filesystem;
 
 TEST_P(ExactAlgorithmTest, ExactAlgorithm)
 {
@@ -117,3 +120,73 @@ TEST(SubsetSumDynamicProgrammingBellmanWordRam, NothingButZeroReachable)
         EXPECT_EQ(output.bound, 0);
     }
 }
+
+struct SubsetSumDynamicProgrammingBellmanTestParams
+{
+    fs::path instance_path;
+
+    fs::path certificate_path;
+};
+
+inline std::ostream& operator<<(
+        std::ostream& os,
+        const SubsetSumDynamicProgrammingBellmanTestParams& test_params)
+{
+    os << test_params.instance_path;
+    return os;
+}
+
+class SubsetSumDynamicProgrammingBellmanTest: public testing::TestWithParam<SubsetSumDynamicProgrammingBellmanTestParams> { };
+
+TEST_P(SubsetSumDynamicProgrammingBellmanTest, SubsetSumDynamicProgrammingBellman)
+{
+    SubsetSumDynamicProgrammingBellmanTestParams test_params = GetParam();
+    InstanceBuilder instance_builder;
+    instance_builder.read(test_params.instance_path.string(), "standard");
+    const Instance instance = instance_builder.build();
+    const Solution solution(instance, test_params.certificate_path.string());
+
+    auto output_array = dynamic_programming_bellman_array(instance);
+    EXPECT_EQ(output_array.value, solution.weight());
+    EXPECT_EQ(output_array.value, output_array.solution.weight());
+    EXPECT_EQ(output_array.bound, solution.weight());
+    EXPECT_TRUE(output_array.is_reachable(solution.weight()));
+
+    auto output_list = dynamic_programming_bellman_list(instance);
+    EXPECT_EQ(output_list.value, solution.weight());
+    EXPECT_EQ(output_list.bound, solution.weight());
+
+    auto output_word_ram = dynamic_programming_bellman_word_ram(instance);
+    EXPECT_EQ(output_word_ram.value, solution.weight());
+    EXPECT_EQ(output_word_ram.bound, solution.weight());
+    EXPECT_TRUE(output_word_ram.is_reachable(solution.weight()));
+
+    auto output_word_ram_rec = dynamic_programming_bellman_word_ram_rec(instance);
+    EXPECT_EQ(output_word_ram_rec.value, solution.weight());
+    EXPECT_EQ(output_word_ram_rec.value, output_word_ram_rec.solution.weight());
+    EXPECT_EQ(output_word_ram_rec.bound, solution.weight());
+}
+
+INSTANTIATE_TEST_SUITE_P(
+        SubsetSum,
+        SubsetSumDynamicProgrammingBellmanTest,
+        testing::ValuesIn(std::vector<SubsetSumDynamicProgrammingBellmanTestParams>{
+            {
+                fs::path("data") / "tests" / "no_item" / "instance.txt",
+                fs::path("data") / "tests" / "no_item" / "solution.txt",
+            }, {
+                fs::path("data") / "tests" / "single_item" / "instance.txt",
+                fs::path("data") / "tests" / "single_item" / "solution.txt",
+            }, {
+                fs::path("data") / "tests" / "single_item_too_heavy" / "instance.txt",
+                fs::path("data") / "tests" / "single_item_too_heavy" / "solution.txt",
+            }, {
+                // The greatest common divisor of the weights is 10.
+                fs::path("data") / "tests" / "gcd" / "instance.txt",
+                fs::path("data") / "tests" / "gcd" / "solution.txt",
+            }, {
+                // The greatest common divisor of the weights is 10, and the
+                // capacity is not a multiple of it.
+                fs::path("data") / "tests" / "gcd_capacity_rounded_down" / "instance.txt",
+                fs::path("data") / "tests" / "gcd_capacity_rounded_down" / "solution.txt",
+            }}));
